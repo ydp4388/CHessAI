@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        #chessboard {
+            width: 400px;
+            height: 400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template: repeat(8, 1fr) / repeat(8, 1fr);
+        }
+        .cell {
+            border: 1px solid #999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .white {
+            background-color: #aaa;
+        }
+        .black {
+            background-color: #333;
+        }
+        .piece {
+            cursor: move;
+        }
+    </style>
+</head>
+<body>
+    <div id="chessboard"></div>
+
+    <script>
+        const board = document.querySelector('#chessboard');
+        const pieces = ['♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜', '♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'];
+        let selectedPiece = null;
+
+        for (let i = 0; i < 64; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.classList.add((Math.floor(i / 8) + i) % 2 === 0 ? 'white' : 'black');
+            if (i < 16) {
+                const piece = document.createElement('span');
+                piece.textContent = pieces[i];
+                piece.classList.add('piece');
+                piece.draggable = true;
+                piece.addEventListener('dragstart', e => {
+                    selectedPiece = e.target;
+                });
+                cell.appendChild(piece);
+            }
+            cell.addEventListener('dragover', e => {
+                e.preventDefault();
+            });
+            cell.addEventListener('drop', e => {
+                e.preventDefault();
+                if (selectedPiece && e.target.classList.contains('cell')) {
+                    e.target.appendChild(selectedPiece);
+                    selectedPiece = null;
+                }
+            });
+            board.appendChild(cell);
+        }
+    </script>
+</body>
+</html>

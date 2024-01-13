@@ -26,6 +26,7 @@ resetDefended = np.frompyfunc(resetDefended, 1, 0)
 class Pawn(Piece):
     def __init__(self, name, color, location):
         self.location = location
+        self.enPassant = False
         #centered at 7,7
         self.first_move = np.zeros((15,15))
         moves = np.zeros((15,15)) #[[0 for j in range(15)] for i in range(15)]
@@ -240,6 +241,7 @@ class Board:
                 piece_moves = piece.first_move
             else:
                 piece_moves = piece.moves
+            
             moves = np.where(np.logical_and(np.logical_and(piece.attacks[7-i:15-i,7-j:15-j] == 1, state != piece), square != -1), 3, moves)
         else:
             piece_moves = piece.moves
@@ -253,7 +255,18 @@ class Board:
         
         #cleanup attacks
         attacks = np.where(np.logical_and(piece.attacks[7-i:15-i,7-j:15-j] == 1, square == -1), 0, attacks)
-          
+        
+        if isinstance(piece, Pawn) and piece.enPassant:
+            print(attacks)
+            if self.square[i,j+1] == 1 and self.state[i,j+1].color != piece.color:
+                x = i+1 if piece.color == 1 else i-1
+                y = j+1
+                attacks[x,y] = 1
+            if self.square[i,j-1] == 1 and self.state[i,j+1].color != piece.color:
+                x = i+1 if piece.color == 1 else i-1
+                y = j-1
+                attacks[x,y] = 1
+           
         #setDefenders
         defended_locations = np.array(np.where(moves == 2)).T
         for [i,j] in defended_locations:
@@ -481,14 +494,28 @@ class Board:
             currentPieces = self.whitePieces if (self.moveTurn%2) == 0 else self.whitePieces
             if move in currentMoves.get(piece.name).tolist():
                 result = 1
-                
-                if not piece.hasMoved and isinstance(piece, King):
-                    if move in self.castle_Positions:
-                        rook = currentPieces.get('Rook1') if move[1] < 3 else currentPieces.get('Rook2')
-                        self.makeCastleMove(piece, rook, move)
-                        result = rook.name
+                if not piece.hasMoved:
+                    if isinstance(piece, King):
+                        if move in self.castle_Positions:
+                            rook = currentPieces.get('Rook1') if move[1] < 3 else currentPieces.get('Rook2')
+                            self.makeCastleMove(piece, rook, move)
+                            result = rook.name
+                    if isinstance(piece, Pawn):
+                        # Enable En Passant
+                        if abs(move[0] - piece.location[0]) == 2:
+                            if isinstance(self.state[move[0], move[1]+1], Pawn) and self.state[move[0], move[1]+1].color != piece.color:
+                                self.state[move[0], move[1]+1].enPassant = True
+                            if isinstance(self.state[move[0], move[1]-1], Pawn) and self.state[move[0], move[1]-1].color != piece.color:
+                                self.state[move[0], move[1]-1].enPassant = True
             
-                captured_piece = self.state[move[0], move[1]]
+                captured_piece = None
+                if isinstance(piece, Pawn) and piece.enPassant:
+                    if move[1] != piece.location[1]:
+                        captured_piece = self.state[move[0]-1, move[1]]
+                        result = 'En Passant'
+                    piece.enPassant = False
+                if captured_piece == None:
+                    captured_piece = self.state[move[0], move[1]]
                 if isinstance(captured_piece, Piece):
                     del currentPieces[captured_piece.name]
                 self.state[piece.location[0], piece.location[1]] = 0

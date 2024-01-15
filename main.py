@@ -66,7 +66,10 @@ class DraggablePiece:
                 elif result == 'Queen':
                     board.promotePawn(board.pieces[i,j])
                 elif result == 'En Passant':
-                    board.pieces[i-1,j].hide()
+                    if self.color == 1:
+                        board.pieces[i-1,j].hide()
+                    else:
+                        board.pieces[i+1,j].hide()
             else:
                 self.canvas.coords(self.id, self.location[1]*100, self.location[0]*100)
             board.hideDots()

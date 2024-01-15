@@ -178,6 +178,8 @@ class Board:
     def __init__(self, width, height, customSetup = None):
         self.width = width
         self.height = height
+        self.whiteEnPassant = False
+        self.blackEnPassant = False
         self.square = np.full((width , height), -1) #[[0 for j in range(height)] for i in range(width)]
         self.state = np.full((width,height), 0, dtype=object)
         self.whiteMoves = {}
@@ -257,12 +259,11 @@ class Board:
         attacks = np.where(np.logical_and(piece.attacks[7-i:15-i,7-j:15-j] == 1, square == -1), 0, attacks)
         
         if isinstance(piece, Pawn) and piece.enPassant:
-            print(attacks)
-            if self.square[i,j+1] == 1 and self.state[i,j+1].color != piece.color:
+            if j < 7 and self.square[i,j+1] == 1 and self.state[i,j+1].color != piece.color:
                 x = i+1 if piece.color == 1 else i-1
                 y = j+1
                 attacks[x,y] = 1
-            if self.square[i,j-1] == 1 and self.state[i,j+1].color != piece.color:
+            if j > 0 and self.square[i,j-1] == 1 and self.state[i,j-1].color != piece.color:
                 x = i+1 if piece.color == 1 else i-1
                 y = j-1
                 attacks[x,y] = 1
@@ -448,9 +449,21 @@ class Board:
                 print('Result - Tie')
                 return 0
     
-        
+    def resetEnPassant(self, curr_pieces, color):
+        for piece in curr_pieces.values():
+            if isinstance(piece, Pawn):
+                piece.enPassant = False
+        if color == 1:
+            self.whiteEnPassant = False
+        if color == 2:
+            self.blackEnPasant = False
+                
     def endTurn(self):
         resetDefended(self.state)
+        if self.blackEnPassant and self.moveTurn%2 == 1:
+            self.resetEnPassant(self.blackPieces, 2)
+        if self.whiteEnPassant and self.moveTurn%2 == 0:
+            self.resetEnPassant(self.whitePieces, 1)
         current_player = (self.moveTurn%2)+1
         self.moveTurn += 1
         next_player = (self.moveTurn%2)+1
@@ -503,17 +516,24 @@ class Board:
                     if isinstance(piece, Pawn):
                         # Enable En Passant
                         if abs(move[0] - piece.location[0]) == 2:
-                            if isinstance(self.state[move[0], move[1]+1], Pawn) and self.state[move[0], move[1]+1].color != piece.color:
+                            if move[1] < 7 and isinstance(self.state[move[0], move[1]+1], Pawn) and self.state[move[0], move[1]+1].color != piece.color:
                                 self.state[move[0], move[1]+1].enPassant = True
-                            if isinstance(self.state[move[0], move[1]-1], Pawn) and self.state[move[0], move[1]-1].color != piece.color:
+                                if piece.color == 2:
+                                    self.whiteEnPassant = True
+                                else:
+                                    self.blackEnPassant = True
+                            if move[1] > 0 and isinstance(self.state[move[0], move[1]-1], Pawn) and self.state[move[0], move[1]-1].color != piece.color:
                                 self.state[move[0], move[1]-1].enPassant = True
+                                if piece.color == 2:
+                                    self.whiteEnPassant = True
+                                else:
+                                    self.blackEnPassant = True
             
                 captured_piece = None
                 if isinstance(piece, Pawn) and piece.enPassant:
                     if move[1] != piece.location[1]:
                         captured_piece = self.state[move[0]-1, move[1]]
                         result = 'En Passant'
-                    piece.enPassant = False
                 if captured_piece == None:
                     captured_piece = self.state[move[0], move[1]]
                 if isinstance(captured_piece, Piece):
